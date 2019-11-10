@@ -3,7 +3,7 @@
 #AutoIt3Wrapper_UseUpx=y
 #AutoIt3Wrapper_Res_Description=Basic regulated expression functions
 #AutoIt3Wrapper_Res_Fileversion=1.0.0.0
-#AutoIt3Wrapper_Res_LegalCopyright=Bert Kerkhof 2019-11-07 Apache 2.0 license
+#AutoIt3Wrapper_Res_LegalCopyright=Bert Kerkhof 2019-11-10 Apache 2.0 license
 #AutoIt3Wrapper_Res_SaveSource=n
 #AutoIt3Wrapper_AU3Check_Parameters=-d -w 3 -w 4 -w 5
 #AutoIt3Wrapper_Run_Tidy=y
@@ -20,13 +20,13 @@
 #include <GuiEdit.au3>; Delivered With AutoIT
 #include <GUIConstantsEx.au3>; Delivered With AutoIT
 #include <WindowsConstants.au3>; Delivered With AutoIT
-#include <aDrosteArray.au3>; GitHub published by Bert Kerkhof
-#include <StringSupport.au3>; GitHub published by Bert Kerkhof
+#include <aDrosteProd.au3>; GitHub published
+#include <StringSupport.au3>; GitHub published
 
 ; Author ....: Bert Kerkhof ( kerkhof.bert@gmail.com )
 ; Tested with: AutoIt version 3.3.14.5 and win10
 
-
+;
 ; Regulated expression interface with procedural syntax =============
 
 ; Advanced search
@@ -81,7 +81,7 @@
 ; parameters, which eases the use:
 ;
 ; Function             Input-parameters                   Return value
-; --------------------------------------------------------------------------
+; ---------------------------------------------------------------------
 ; To find a single match:
 ;   mRegEx()           $sIn $Pattern [$iStart]            $mArray
 ;   iRegEx()           $sIn $Pattern [$iStart]            $iIndex
@@ -96,23 +96,24 @@
 ;   aRegExCapture()    $sIn $Pattern [$iStart]            $a/aaCapture
 ;
 ; To operate on a RegEx pattern:
-;   nCapture()         $Pattern                           $nCaptureFields
-;   LimitCap()         $Pattern [$iKeep]                  $pBasic
+;   nCapture()         $Pattern                           $pSimple
+;   LimitCap()         $Pattern [$iKeep1]..[$iKeep3]      $pBasic
 ;
 ; For use together with mRegEx and amRegExCapture():
+;   mRegExdotHeader()  $mArray $sIn                       $sHeader
+;   mRegExdotFooter()  $mArray $sIn                       $sFooter
+;   mRegExdotContent() $mArray [$sSep]                    $sContent
 ;   mRegExdotFound()   $mArray                            $iStart
 ;   mRegExdotLast()    $mArray                            $iLast
 ;   mRegExdotLength()  $mArray                            $Length
-;   mRegExdotHeader()  $mArray $sIn                       $sHeader
-;   mRegExdotContent() $mArray [$sSep]                    $sContent
-;   mRegExdotFooter()  $mArray $sIn                       $sFooter
-; --------------------------------------------------------------------------
+
+; ---------------------------------------------------------------------
 
 ; The first input parameters $sInput and $Pattern are the same for many
 ; functions. From the third parameter on, the parameters are optional.
 ;
 ; For compatibility with an earlier implementation, some of the functions
-; return a value via macro @extended:
+; return a value via snapchat variable @extended:
 ;    + With sRegEx(), @extended return the start location of the match in
 ;      the input string.
 ;    + In iRegEx(), @extended is used as a pointer to the location
@@ -124,20 +125,24 @@
 ;
 ; To help learn RegEx patterns, these Regex functions issue an informative
 ; halt message to the console if a pattern has a syntax error. @error code
-; 2 is immediately intercepted within the function and brought to the
-; attention of the programmer. So the programmer never has to bother about
-; further processing that would obscure the cause. This is a time saver.
+; 2 is immediately intercepted within the CheckPattern function and
+; brought to the attention of the programmer via the Scite console.
+; Patterns with a zero length match may cause indefinite searches. Also
+; these patterns are early intercepted. So the programmer never has to
+; bother about further processing that would obscure the cause. This is a
+; time saver.
 ;
-; The functions never raise the @error flag also if there is no match.
-; Some functions don't return matches at all. With other functions the
-; mFOUND property signals whether there is a match. For functions that
-; process multiple matches, see the count property of the returned array.
+; All the functions in this module never raise the @error flag also if
+; there is no match. Some functions don't return matches at all. With
+; other functions, the mFOUND property signals whether there is a match.
+; For functions that process multiple matches, see the count property of
+; the returned array.
 ;
 ; Patterns
-; To practice with the formation of patterns, AutoIT offers a helper GUI.
-; Find it by searching on: "StringRegEpxGUI in the help files, then browse
-; the page to "Resources" under "Example 6". Also there is a pattern test
-; program in my RegExGui repository at GitHub.
+; To practice with the formation of patterns, there is a pattern test
+; program in my RegExGui repository at GitHub. Also the AutoIT package
+; offers a helper GUI. Find it by searching on: "StringRegEpxGUI in the
+; help files, then browse the page to "Resources" under "Example 6".
 ;
 ; Excellent documentation is at: "http://regular-expressions.info"
 ; and in: "Regular Expressions Cookbook" written by Jan Goyvaerts and Steven
@@ -148,9 +153,9 @@
 ; by default. To comply, the first thing to do is: save code with your
 ; source code editor in utf8 format. For old-style ascii input, precede the
 ; pattern with syntax: (*ASC)
-;
 
-; Version1 to version2 change log:
+;
+; Version1 to version2 change log =====================================
 ; Ergonomic improvement of regulated expression programming was a
 ; leading motive.
 ;
@@ -174,7 +179,8 @@
 ;
 ; A new function analyses the RegEx pattern: nCapture gives info before
 ; RegEx execution. With the use of LimitCap and nCapture and numerous
-; small optimizations, execution speed of the module is shortened.
+; small optimizations, the execution speed of the module increased
+; considerable.
 ;
 ; I hope the functions presented here will facilitate the use of RegEx
 ; and make people curious about regulated expressions and what they can
@@ -182,8 +188,19 @@
 ;
 ; Author: kerkhof.bert@gmail.com
 
-
+;
 ; Functions that operate on a RegEx pattern =========================
+
+; Note: The nCapture and LimitCap functions are designed to operate
+; with a fixed number of capture fields per pattern. This is frequently
+; the case in applications based on the RegEx module delivered with
+; AutoIT package v3, PCRE version Januari 2014.
+;
+; If using a pattern with a conditional numbered capture field such
+; as (abc)? or (abc){0,1}, the nCapture and LimitCap functions are not
+; accurate. Anyway the usage of such a conditional field is not
+; advisable since it is difficult to find back the resulting captured
+; data in the outputted array. Use ((?:abc)?) instead.
 
 ; #FUNCTION#
 ; Name ..........: nCapture
@@ -196,31 +213,30 @@
 ;                  match counts as one.
 
 Func nCapture($Pattern)
-  Local $N = nString($Pattern, "(") - nString($Pattern, "(?") - nString($Pattern, "(*")
+  Local $N = UBound(StringRegExp($Pattern, "\((?![\?\*])", $STR_REGEXPARRAYGLOBALMATCH))
   Return $N ? $N : 1
 EndFunc   ;==>nCapture
 
 ; #FUNCTION#
 ; Name ..........: LimitCap
-; Description ...: Changes the pattern to receive less capture fields
-; Syntax ........: LimitCap($Pattern[, $iKeep = 0])
-; Parameters ....: $Pattern ... RegEx pattern.
-;                  $iKeep ..... [optional] number of a capture field to
-;                               retain. Default is 0 (keep no capture
-;                               field).
+; Description ...: Changes the pattern to receive less captures per match
+; Syntax ........: LimitCap($Pattern[, $iKeep1 = 0][, $iKeep2 = 0][, $iKeep3 = 0])
+; Parameters ....: $Pattern .. RegEx pattern.
+;                  $iKeep1..3  [optional] numbers of a capture field to retain.
+;                              Default is all 0 (keep no capture field).
 ; Returns .......: The modified pattern
 ; Author ........: Bert Kerkhof
 
-Func LimitCap($Pattern, $iKeep = 0)
-  Local $K, $aHook = aNew()
-  For $I = 1 To 9999
-    $K = StringInStr($Pattern, "(", 0, $I)
+Func LimitCap($Pattern, Const $iKeep1 = 0, Const $iKeep2 = 0, Const $iKeep3 = 0)
+  Local $aKeep = aLeft(Array($iKeep1, $iKeep2, $iKeep3), @NumParams - 1)
+  Local $K = 0, $aHook = aNew()
+  While True
+    $K = iRegEx($Pattern, "(?<!\\)\((?=[^\?\*])", $K + 1)
     If $K = 0 Then ExitLoop
-    If StringInStr("?*", StringMid($Pattern, $K + 1, 1)) Then ContinueLoop
     aAdd($aHook, $K)
-  Next
+  WEnd
   For $I = $aHook[0] To 1 Step -1
-    If $I = $iKeep Then ContinueLoop
+    If aSearch($aKeep, $I) Then ContinueLoop
     $Pattern = StringLeft($Pattern, $aHook[$I] - 1) & "(?:" & StringMid($Pattern, $aHook[$I] + 1)
   Next
   Return $Pattern
@@ -235,15 +251,49 @@ EndFunc   ;==>LimitCap
 ; Author ........: Bert Kerkhof
 ; Comment .......: In case of an error, the program ends
 
-Func CheckPattern($Pattern) ; Also changes the default mode to utf
+Func CheckPattern(ByRef $Pattern) ; Also changes the default mode to utf
+  Local Static $sMsg = "RegEx pattern error: "
   If Not StringRegExp($Pattern, "\(\*(?:ASC|UTF)\)") Then $Pattern = "(*UTF)" & $Pattern
-  StringRegExp("", $Pattern) ; Test pattern on void input
-  If @error <> 2 Then Return
-  cc('RegEx pattern error: ' & $Pattern & @CRLF & Spaces(@extended + 20) & "^")
-  Exit
+  StringRegExp("", $Pattern, $STR_REGEXPARRAYMATCH) ; Test pattern on void input
+  Switch @error
+    Case 0
+      If @extended = 1 Then
+        cc($sMsg & $Pattern & @CRLF & Spaces(21) & "zero length match")
+        Exit
+      EndIf
+    Case 2
+      cc($sMsg & $Pattern & @CRLF & Spaces(20 + @extended) & "^")
+      Exit
+  EndSwitch
 EndFunc   ;==>CheckPattern
 
+;
 ; Core functions and use of $mArray ===================================
+
+; #FUNCTION#
+; Name ..........: _mRegEx
+; Description ...: Internal helper function for mRegEx.
+; Author ........: Bert Kerkhof
+
+Func _mRegEx(Const $sInput, $Pattern, Const $iStart = 1)
+  Local $aCap = StringRegExp($sInput, $Pattern, $STR_REGEXPARRAYFULLMATCH, $iStart)
+  If @error Then Return Array("", $iStart, 0, 0)
+  Local $iFound = @extended, $nCap = UBound($aCap) - 1
+  Local Static $mArray[64] ; Optimized for execution speed
+  If $nCap Then
+    For $I = 1 To $nCap
+      $mArray[$I] = $aCap[$I]
+    Next
+  Else
+    $mArray[1] = $aCap[0]
+    $nCap += 1
+  EndIf
+  $mArray[$nCap + 1] = $iStart ; $mSTART
+  $mArray[$nCap + 2] = $iFound - StringLen($aCap[0]) ; $mFOUND
+  $mArray[$nCap + 3] = $iFound ; $mOFFSET
+  $mArray[0] = $nCap + 3
+  Return $mArray
+EndFunc   ;==>_mRegEx
 
 ; #FUNCTION#
 ; Name ..........: mRegEx
@@ -281,77 +331,20 @@ EndFunc   ;==>CheckPattern
 ;                  The last three elements contain information about the
 ;                  executed search:
 ;                    mSTART .... Location where the search started.
-;                    mOFFSET ... Points to first character after the match.
-;                                If there is no match, its value is gSTART.
 ;                    mFOUND .... Points to the first character of the match.
 ;                                A zero is returned if there is no match.
+;                    mOFFSET ... Points to first character after the match.
+;                                If there is no match, its value is mSTART.
 ;                  The total number of captured fields is $mArray[0]-3. If
 ;                  there is no match, the Droste array only contains the
 ;                  RegEx properties and the Droste COUNT element $mArray[0]
 ;                  is three.
 ; Author ........: Bert Kerkhof
 
-Func mRegEx(Const $sInput, Const $Pattern, $iStart = 1)
+Func mRegEx(Const $sInput, $Pattern, Const $iStart = 1)
   CheckPattern($Pattern)
-  Local $aCap = StringRegExp($sInput, $Pattern, $STR_REGEXPARRAYFULLMATCH, $iStart)
-  If @error Then Return Array($iStart, $iStart, 0)
-  Local $iFound = @extended, $nCap = UBound($aCap) - 1
-  Local Static $mArray[64] ; Optimized for execution speed
-  If $nCap Then
-    For $I = 1 To $nCap
-      $mArray[$I] = $aCap[$I]
-    Next
-  Else
-    $mArray[1] = $aCap[0]
-    $nCap += 1
-  EndIf
-  $mArray[$nCap + 1] = $iStart ; $mSTART
-  $mArray[$nCap + 2] = $iFound ; $mOFFSET
-  $mArray[$nCap + 3] = $iFound - StringLen($aCap[0]) ; $mFOUND
-  $mArray[0] = $nCap + 3
-  Return $mArray
+  Return _mRegEx($sInput, $Pattern, $iStart)
 EndFunc   ;==>mRegEx
-
-; #FUNCTION#
-; Name ..........: mRegExdotFound
-; Description ...: Return position of the first character of the full match
-; Syntax ........: mRegExdotFound(Const $mArray)
-; Parameter .....: $mArray ... [const] Map with captured data and properties
-; Returns .......: Location number pointing to a character in $sInput
-;                  If there is no match, zero is returned
-; Author ........: Bert Kerkhof
-
-Func mRegExdotFound(Const $mArray)
-  Return $mArray[$mArray[0]]
-EndFunc   ;==>mRegExdotFound
-
-; #FUNCTION#
-; Name ..........: mRegExdotLast
-; Description ...: Returns position of the last character of the full match
-; Syntax ........: mRegExdotLast(Const $mArray)
-; Parameter .....: $mArray ... [const] Map with captured data and properties
-; Returns .......: Location number pointing to a character in $sInput
-;                  If there is no match, zero is returned
-; Author ........: Bert Kerkhof
-
-Func mRegExdotLast(Const $mArray)
-  Local $iOffset = $mArray[mRegEx[0] - 1]
-  Return $iOffset ? $iOffset - 1 : 0
-EndFunc   ;==>mRegExdotLast
-
-; #FUNCTION#
-; Name ..........: mRegExdotLength
-; Description ...: Returns the length of the found full match
-; Syntax ........: mRegExdotLength(Const $mArray)
-; Parameter .....: $mArray ... [const] Map with captured data and properties
-; Returns .......: Length number
-;                  If there is no match, zero is returned
-; Author ........: Bert Kerkhof
-
-Func mRegExdotLength(Const $mArray)
-  Local Enum $mSTART = $mArray[0] - 3, $mOFFSET
-  Return $mArray[$mOFFSET] - $mArray[$mSTART]
-EndFunc   ;==>mRegExdotLength
 
 ; #FUNCTION#
 ; Name ..........: mRegExdotHeader
@@ -367,9 +360,26 @@ EndFunc   ;==>mRegExdotLength
 ; Author ........: Bert Kerkhof
 
 Func mRegExdotHeader(Const $mArray, Const $sInput)
-  Local $mSTART = $mArray[$mArray[0] - 2]
-  Return StringMid($sInput, $mSTART, $mArray[$mArray[0]] - $mSTART)
+  Local Enum $mSTART = $mArray[0] - 2, $mFOUND
+  Return StringMid($sInput, $mArray[$mSTART], $mArray[$mFOUND] - $mArray[$mSTART])
 EndFunc   ;==>mRegExdotHeader
+
+; #FUNCTION#
+; Name ..........: mRegExdotFooter
+; Description ...: Retrieves the footer from $sInput.
+; Remakr ........: Footer is text starting at mOFFSET up to end of $sInput.
+; Syntax ........: mRegExdotFooter(Const $mArray, Const $sInput)
+; Parameters ....: $sInput ... [const] The string that is searched
+;                  $mArray ... [const] Map with captured data and attributes
+; Returns .......: Footer string
+;                  If there is no match or there is no footer, a null
+;                  string ("") is returned.
+; Example .......: aRegExSplit() and aRegExReplace()
+; Author ........: Bert Kerkhof
+
+Func mRegExdotFooter(Const $mArray, Const $sInput)
+  Return StringMid($sInput, $mArray[$mArray[0]])
+EndFunc   ;==>mRegExdotFooter
 
 ; #FUNCTION#
 ; Name ..........: mRegExdotContent
@@ -393,22 +403,46 @@ Func mRegExdotContent(Const $mArray, $Sep = "|")
 EndFunc   ;==>mRegExdotContent
 
 ; #FUNCTION#
-; Name ..........: mRegExdotFooter
-; Description ...: Retrieves the footer from $sInput.
-; Remakr ........: Footer is text starting at mOFFSET up to end of $sInput.
-; Syntax ........: mRegExdotFooter(Const $mArray, Const $sInput)
-; Parameters ....: $sInput ... [const] The string that is searched
-;                  $mArray ... [const] Map with captured data and atributes
-; Returns .......: Footer string
-;                  If there is no match or there is no footer, a null
-;                  string ("") is returned.
-; Example .......: aRegExSplit() and aRegExReplace()
+; Name ..........: mRegExdotFound
+; Description ...: Return position of the first character of the full match
+; Syntax ........: mRegExdotFound(Const $mArray)
+; Parameter .....: $mArray ... [const] Map with captured data and properties
+; Returns .......: Location number pointing to a character in $sInput
+;                  If there is no match, zero is returned
 ; Author ........: Bert Kerkhof
 
-Func mRegExdotFooter(Const $mArray, Const $sInput)
-  Return StringMid($sInput, $mArray[$mArray[0] - 1])
-EndFunc   ;==>mRegExdotFooter
+Func mRegExdotFound(Const $mArray)
+  Return Max(0, $mArray[$mArray[0] - 1])
+EndFunc   ;==>mRegExdotFound
 
+; #FUNCTION#
+; Name ..........: mRegExdotLast
+; Description ...: Returns position of the last character of the full match
+; Syntax ........: mRegExdotLast(Const $mArray)
+; Parameter .....: $mArray ... [const] Map with captured data and properties
+; Returns .......: Location number pointing to a character in $sInput
+;                  If there is no match, zero is returned
+; Author ........: Bert Kerkhof
+
+Func mRegExdotLast(Const $mArray)
+  Return Max(0, $mArray[$mArray[0]] - 1)
+EndFunc   ;==>mRegExdotLast
+
+; #FUNCTION#
+; Name ..........: mRegExdotLength
+; Description ...: Returns the length of the full match
+; Syntax ........: mRegExdotLength(Const $mArray)
+; Parameter .....: $mArray ... [const] Map with captured data and properties
+; Returns .......: Length number
+;                  If there is no match, zero is returned
+; Author ........: Bert Kerkhof
+
+Func mRegExdotLength(Const $mArray)
+  Local $mOFFSET = $mArray[0], $mFOUND = $mOFFSET - 1
+  Return $mArray[$mOFFSET] - $mArray[$mFOUND]
+EndFunc   ;==>mRegExdotLength
+
+;
 ; Functions that find a single match: =================================
 
 ; #FUNCTION#
@@ -428,8 +462,8 @@ EndFunc   ;==>mRegExdotFooter
 
 Func iRegEx(Const $sInput, Const $Pattern, $iStart = 1)
   Local $mArray = mRegEx($sInput, $Pattern, $iStart)
-  SetExtended($mArray[$mArray[0] - 1]) ; mOFFSET
-  Return $mArray[$mArray[0]] ; mFOUND
+  SetExtended($mArray[$mArray[0]]) ; mOFFSET
+  Return $mArray[$mArray[0] - 1] ; mFOUND
 EndFunc   ;==>iRegEx
 
 ; #FUNCTION#
@@ -449,7 +483,7 @@ EndFunc   ;==>iRegEx
 
 Func iRegExLast(Const $sInput, Const $Pattern, $iStart = 1)
   Local $mArray = mRegEx($sInput, $Pattern, $iStart)
-  Return $mArray[$mArray[0] - 1]
+  Return Max(0, $mArray[$mArray[0]] - 1)
 EndFunc   ;==>iRegExLast
 
 ; #FUNCTION#
@@ -461,19 +495,19 @@ EndFunc   ;==>iRegExLast
 ;                  $iStart ... [optional] location in $sInput where the
 ;                              search starts. Default is 1.
 ; Returns .......: Full match string
-; AutoIT bonus ..: Macro @extended points to first location of the match.
-;                  If there is no match, @extended is zero.
+; AutoIT bonus ..: Snapchat variable @extended points to first location of
+;                  the match. If there is no match, @extended is zero.
 ; Author ........: Bert Kerkhof
 
 Func sRegEx(Const $sInput, $Pattern, $iStart = 1)
   $Pattern = LimitCap($Pattern) ; Ignore capture fields, ensure full match
   Local $mArray = mRegEx($sInput, $Pattern, $iStart)
   Local $sOut = $mArray[1]
-  SetExtended($mArray[$mArray[0]])
+  SetExtended($mArray[$mArray[0] - 1])
   Return $sOut
 EndFunc   ;==>sRegEx
 
-
+;
 ; Functions to operate multiple search matches =====================
 
 ; #FUNCTION#
@@ -487,12 +521,11 @@ EndFunc   ;==>sRegEx
 ; Returns .......: Total number of matches
 ; Author ........: Bert Kerkhof
 
-Func nRegEx(Const $sInput, $Pattern, $iStart = 1)
+Func nRegEx(Const $sInput, $Pattern, Const $iStart = 1)
   CheckPattern($Pattern)
   $Pattern = LimitCap($Pattern) ; Improves processing speed. No cons.
   Local $aCap = StringRegExp($sInput, $Pattern, $STR_REGEXPARRAYGLOBALMATCH, $iStart)
-  If @error Then Return SetError(@error, @extended, 0)
-  Return SetError(0, @extended, UBound($aCap))
+  Return @error ? 0 : UBound($aCap)
 EndFunc   ;==>nRegEx
 
 ; #FUNCTION#
@@ -511,7 +544,7 @@ EndFunc   ;==>nRegEx
 ;                     × Length of the full match can be calculated as
 ;                     $mFOUND minus $mOFFSET
 ;                     × Header (or spill) of the match is the input $mSTART
-;                       up to to $mFOUND
+;                       up to $mFOUND
 ;                     × Footer of the last match is the input from $mOFFSET
 ;                       to end-of-file
 ;                  6. For next matches, additional rows are generated.
@@ -533,13 +566,20 @@ EndFunc   ;==>nRegEx
 
 Func amRegExCapture(Const $sInput, $Pattern, $iStart = 1)
   CheckPattern($Pattern)
-  Local $nCap = nCapture($Pattern), $N = nRegEx($sInput, $Pattern, $iStart)
-  Local $mArray = aNew($nCap + 3), $mOFFSET = $nCap + 2, $amResult = aNew($N)
-  For $I = 1 To $N
-    $mArray = mRegEx($sInput, $Pattern, $iStart)
-    $amResult[$I] = $mArray
-    $iStart = $mArray[$mOFFSET]
-  Next
+  ; Optimized for execution speed:
+  Local $mArray, $amResult = aNew(), $iStrek = 1
+  While True
+    For $I = $iStrek To UBound($amResult) - 1
+      $mArray = _mRegEx($sInput, $Pattern, $iStart)
+      $iStart = $mArray[$mArray[0]]
+      If $iStart = 0 Then ExitLoop
+      $amResult[$I] = $mArray
+    Next
+    If $iStart = 0 Then ExitLoop
+    $iStrek = $I + 1
+    _NewDim($amResult, $iStrek)
+  WEnd
+  $amResult[0] = $I - 1
   Return $amResult
 EndFunc   ;==>amRegExCapture
 
@@ -559,12 +599,12 @@ EndFunc   ;==>amRegExCapture
 ;                  the full matches.
 ; Author ........: Bert Kerkhof
 
-Func aRegExLocate(Const $sInput, $Pattern, $iStart = 1, $Lfirst = True)
+Func aRegExLocate(Const $sInput, $Pattern, Const $iStart = 1, Const $Lfirst = True)
   CheckPattern($Pattern)
   $Pattern = LimitCap($Pattern) ; Improves processing speed. No cons.
   Local $amSource = amRegExCapture($sInput, $Pattern, $iStart)
   Local $aResult = aNew($amSource[0])
-  Local Enum $mOFFSET = 3, $mFOUND
+  Local Enum $mFOUND = 3, $mOFFSET
   If $Lfirst Then
     For $I = 1 To $amSource[0]
       $aResult[$I] = ($amSource[$I])[$mFOUND]
@@ -595,10 +635,10 @@ EndFunc   ;==>aRegExLocate
 ;                  contains the number of parts.
 ; Author ........: Bert Kerkhof
 
-Func aRegExSplit($sInput, $Pattern, $iStart = 1)
-  Local $amSource = amRegExCapture($sInput, $Pattern, $iStart)
-  If $amSource[0] = 0 Then Return SetError(0, 0, Array($sInput))
-  Local $nCap = nCapture($Pattern), $mOFFSET = $nCap + 2
+Func aRegExSplit(Const $sInput, $Pattern, Const $iStart = 1)
+  Local Static $mOFFSET = 4
+  Local $amSource = amRegExCapture($sInput, LimitCap($Pattern), $iStart)
+  If $amSource[0] = 0 Then Return Array($sInput) ; Unsplitted
   Local $mArray, $aSplit = aNew($amSource[0])
   For $I = 1 To $amSource[0]
     $mArray = $amSource[$I]
@@ -630,7 +670,8 @@ EndFunc   ;==>aRegExSplit
 ;                  $iStart .... [optional] location in $sInput where search
 ;                               starts.
 ; Returns .......: String with all the replacements made.
-; AutoIT bonus ..: Macro @extended contains the total number of matches.
+; AutoIT bonus ..: Snapchat variable @extended contains the total number
+;                  of matches.
 ; Explanation ...: Use of this function needs some understanding of the
 ;                  'capture fields' mechanism. The pattern may contain one
 ;                  or more sub matches called capture fields. These are
@@ -646,32 +687,34 @@ EndFunc   ;==>aRegExSplit
 ;       Placeholder ^ causes a conversion of the capture to uppercase.
 ; Author ........: Bert Kerkhof
 
-Func sRegExReplace($sInput, $Pattern, $sScript, $iStart = 1)
-  Local $amSource = amRegExCapture($sInput, $Pattern, $iStart)
-  If $amSource[0] = 0 Then Return SetError(1, 0, $sInput)
-  Local $mArray, $sOut = ""
+Func sRegExReplace(Const $sInput, $Pattern, Const $sScript, Const $iStart = 1)
 
-  ; Prepare tokens from the replace script:
+  ; Prepare the replace tokens:
   Local $aaToken = aRegExCapture($sScript, "(?<!\\)(((?:\\|\$|\^))(\d+))")
-  Local $aToken, $ePos, $nCap = nCapture($Pattern)
+  Local Enum $pHOLDER = 1, $pSYMBOL, $pNUMBER ; $aToken elements
+  Local $aToken, $ePos, $nCap = nCapture($Pattern) ; Number of capture fields
   For $I = 1 To $aaToken[0] ; Check validity of the numbers:
     $aToken = $aaToken[$I]
-    If $aToken[3] <= $nCap Then ContinueLoop
+    If $aToken[$pNUMBER] <= $nCap Then ContinueLoop
     $ePos = StringInStr($sScript, $aToken[1])
     cc('sReplace pattern error: ' & $sScript & @CRLF & Spaces($ePos + 24) & "^")
     Exit
   Next
+
   ; Capture headers, fragments and one footer:
-  Local $sBpart, $sTarget
+  If $aaToken[0] = 0 Then $Pattern = LimitCap($Pattern)
+  Local $amSource = amRegExCapture($sInput, $Pattern, $iStart)
+  If $amSource[0] = 0 Then Return SetError(0, 0, $sInput)
+  Local $mArray, $sBpart, $sTarget, $sOut = ""
   For $I = 1 To $amSource[0]
     $mArray = $amSource[$I]
     $sOut &= mRegExdotHeader($mArray, $sInput)
     $sBpart = $sScript
     For $J = 1 To $aaToken[0]
       $aToken = $aaToken[$J]
-      $sTarget = $mArray[$aToken[3]]
-      If $aToken[2] = "^" Then $sTarget = StringUpper($sTarget)
-      $sBpart = StringReplace($sBpart, $aToken[1], $sTarget)
+      $sTarget = $mArray[$aToken[$pNUMBER]]
+      If $aToken[$pSYMBOL] = "^" Then $sTarget = StringUpper($sTarget)
+      $sBpart = StringReplace($sBpart, $aToken[$pHOLDER], $sTarget)
     Next
     $sOut &= $sBpart
   Next
@@ -686,9 +729,9 @@ EndFunc   ;==>sRegExReplace
 ; Remark ........: In some instances, the location properties that
 ;                  amRegExCapture reveal, are not needed. In that case a
 ;                  more simple implementation might show execution speed
-;                  advantage. The aRregExCapture function is coded to
-;                  compare. Note that the returned array can have one
-;                  or two dimensions, depending on input pattern. In general
+;                  advantage. The aRegExCapture function is coded to
+;                  compare. Note that the returned array can have one or
+;                  two dimensions, depending on input pattern. In general
 ;                  it is good practice to avoid a function that can returns
 ;                  confusing different data structures.
 ; Features ......: 1. If the pattern has zero capture fields, each returned
@@ -713,12 +756,11 @@ EndFunc   ;==>sRegExReplace
 ; Returns .......: Droste array-in-array with captured data and properties.
 ; Author ........: Bert Kerkhof
 
-Func aRegExCapture(Const $sInput, $Pattern, $iStart = 1)
+Func aRegExCapture(Const $sInput, $Pattern, Const $iStart = 1)
   CheckPattern($Pattern)
-  Local $aCap = StringRegExp($sInput, $Pattern, $STR_REGEXPARRAYGLOBALMATCH, $iStart)
-  Local $err = @error
-  If $err Then Return SetError($err, 0, Array())
-  Local $nCap = nCapture($Pattern), $aaMatrix
+  Local $aaMatrix, $aCap, $nCap = nCapture($Pattern) ; Number of captures
+  $aCap = StringRegExp($sInput, $Pattern, $STR_REGEXPARRAYGLOBALMATCH, $iStart)
+  If @error Then Return aNew()
   If $nCap = 1 Then
     $aaMatrix = aDroste($aCap)
   Else
@@ -745,7 +787,7 @@ EndFunc   ;==>aRegExCapture
 ; Returns .......: Modified string
 ; Author ........: Bert Kerkhof
 
-Func sTitleCase($sInput)
+Func sTitleCase(Const $sInput)
   Return sRegExReplace($sInput, "(^|\h+)(\p{Ll})", "$1^2")
 EndFunc   ;==>sTitleCase
 
