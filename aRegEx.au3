@@ -20,8 +20,8 @@
 #include <GuiEdit.au3>; Delivered With AutoIT
 #include <GUIConstantsEx.au3>; Delivered With AutoIT
 #include <WindowsConstants.au3>; Delivered With AutoIT
-#include <aDrosteProd.au3>; GitHub published
-#include <StringSupport.au3>; GitHub published
+#include <aDrosteArray.au3>; Published at GitHub
+#include <StringSupport.au3>; Published at GitHub
 
 ; Author ....: Bert Kerkhof ( kerkhof.bert@gmail.com )
 ; Tested with: AutoIt version 3.3.14.5 and win10
@@ -576,7 +576,7 @@ Func amRegExCapture(Const $sInput, $Pattern, $iStart = 1)
       $amResult[$I] = $mArray
     Next
     If $iStart = 0 Then ExitLoop
-    $iStrek = $I + 1
+    $iStrek = $I
     _NewDim($amResult, $iStrek)
   WEnd
   $amResult[0] = $I - 1
