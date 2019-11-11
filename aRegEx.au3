@@ -1,9 +1,9 @@
 ﻿#Region ;**** Directives created by AutoIt3Wrapper_GUI ****
 #AutoIt3Wrapper_Outfile=aRegEx.exe
 #AutoIt3Wrapper_UseUpx=y
-#AutoIt3Wrapper_Res_Description=Basic regulated expression functions
+#AutoIt3Wrapper_Res_Description=Regulated expression wrapper
 #AutoIt3Wrapper_Res_Fileversion=1.0.0.0
-#AutoIt3Wrapper_Res_LegalCopyright=Bert Kerkhof 2019-11-10 Apache 2.0 license
+#AutoIt3Wrapper_Res_LegalCopyright=Bert Kerkhof 2019-11-11 Apache 2.0 license
 #AutoIt3Wrapper_Res_SaveSource=n
 #AutoIt3Wrapper_AU3Check_Parameters=-d -w 3 -w 4 -w 5
 #AutoIt3Wrapper_Run_Tidy=y
@@ -16,10 +16,7 @@
 ; BertKerkhof repository "aRegEx".
 
 #include-once
-#include <EditConstants.au3>; Delivered With AutoIT
-#include <GuiEdit.au3>; Delivered With AutoIT
-#include <GUIConstantsEx.au3>; Delivered With AutoIT
-#include <WindowsConstants.au3>; Delivered With AutoIT
+#include <StringConstants.au3> ; Delivered with AutoIT
 #include <aDrosteArray.au3>; Published at GitHub
 #include <StringSupport.au3>; Published at GitHub
 
@@ -277,7 +274,7 @@ EndFunc   ;==>CheckPattern
 
 Func _mRegEx(Const $sInput, $Pattern, Const $iStart = 1)
   Local $aCap = StringRegExp($sInput, $Pattern, $STR_REGEXPARRAYFULLMATCH, $iStart)
-  If @error Then Return Array("", $iStart, 0, 0)
+  If @error Then Return Array("", $iStart, 0, $iStart)
   Local $iFound = @extended, $nCap = UBound($aCap) - 1
   Local Static $mArray[64] ; Optimized for execution speed
   If $nCap Then
@@ -412,7 +409,7 @@ EndFunc   ;==>mRegExdotContent
 ; Author ........: Bert Kerkhof
 
 Func mRegExdotFound(Const $mArray)
-  Return Max(0, $mArray[$mArray[0] - 1])
+  Return $mArray[$mArray[0] - 1]
 EndFunc   ;==>mRegExdotFound
 
 ; #FUNCTION#
@@ -425,7 +422,8 @@ EndFunc   ;==>mRegExdotFound
 ; Author ........: Bert Kerkhof
 
 Func mRegExdotLast(Const $mArray)
-  Return Max(0, $mArray[$mArray[0]] - 1)
+  Local $mOFFSET = $mArray[0], $mFOUND = $mOFFSET - 1
+  Return $mArray[$mFOUND] ? $mArray[$mOFFSET] - 1 : 0
 EndFunc   ;==>mRegExdotLast
 
 ; #FUNCTION#
@@ -439,7 +437,7 @@ EndFunc   ;==>mRegExdotLast
 
 Func mRegExdotLength(Const $mArray)
   Local $mOFFSET = $mArray[0], $mFOUND = $mOFFSET - 1
-  Return $mArray[$mOFFSET] - $mArray[$mFOUND]
+  Return $mArray[$mFOUND] ? $mArray[$mOFFSET] - $mArray[$mFOUND] : 0
 EndFunc   ;==>mRegExdotLength
 
 ;
@@ -567,16 +565,17 @@ EndFunc   ;==>nRegEx
 Func amRegExCapture(Const $sInput, $Pattern, $iStart = 1)
   CheckPattern($Pattern)
   ; Optimized for execution speed:
-  Local $mArray, $amResult = aNew(), $iStrek = 1
+  Local $mArray, $iOffset, $amResult = aNew(), $iStrek = 1
   While True
     For $I = $iStrek To UBound($amResult) - 1
-      $mArray = _mRegEx($sInput, $Pattern, $iStart)
+      $iOffset = $iStart
+      $mArray = _mRegEx($sInput, $Pattern, $iOffset)
       $iStart = $mArray[$mArray[0]]
-      If $iStart = 0 Then ExitLoop
+      If $iStart = $iOffset Then ExitLoop
       $amResult[$I] = $mArray
     Next
-    If $iStart = 0 Then ExitLoop
-    $iStrek = $I
+    If $iStart = $iOffset Then ExitLoop
+    $iStrek = Ubound($amResult)
     _NewDim($amResult, $iStrek)
   WEnd
   $amResult[0] = $I - 1
