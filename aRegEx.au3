@@ -3,7 +3,7 @@
 #AutoIt3Wrapper_UseUpx=y
 #AutoIt3Wrapper_Res_Description=Regulated expression wrapper
 #AutoIt3Wrapper_Res_Fileversion=1.0.0.0
-#AutoIt3Wrapper_Res_LegalCopyright=Bert Kerkhof 2019-11-11 Apache 2.0 license
+#AutoIt3Wrapper_Res_LegalCopyright=Bert Kerkhof 2019-11-13 Apache 2.0 license
 #AutoIt3Wrapper_Res_SaveSource=n
 #AutoIt3Wrapper_AU3Check_Parameters=-d -w 3 -w 4 -w 5
 #AutoIt3Wrapper_Run_Tidy=y
@@ -16,7 +16,7 @@
 ; BertKerkhof repository "aRegEx".
 
 #include-once
-#include <StringConstants.au3> ; Delivered with AutoIT
+#include <StringConstants.au3>; Delivered With AutoIT
 #include <aDrosteArray.au3>; Published at GitHub
 #include <StringSupport.au3>; Published at GitHub
 
@@ -148,7 +148,7 @@
 ; Unicode
 ; All the functions in this interface operate on Unicode utf input strings
 ; by default. To comply, the first thing to do is: save code with your
-; source code editor in utf8 format. For old-style ascii input, precede the
+; source code editor in utf8 format. For legacy ascii input, precede the
 ; pattern with syntax: (*ASC)
 
 ;
@@ -250,7 +250,8 @@ EndFunc   ;==>LimitCap
 
 Func CheckPattern(ByRef $Pattern) ; Also changes the default mode to utf
   Local Static $sMsg = "RegEx pattern error: "
-  If Not StringRegExp($Pattern, "\(\*(?:ASC|UTF)\)") Then $Pattern = "(*UTF)" & $Pattern
+  If Not StringRegExp($Pattern, "\(\*(?:ASC|UCP)\)") Then $Pattern = "(*UCP)" & $Pattern
+  $Pattern = StringReplace($Pattern, "(*ASC)", "")
   StringRegExp("", $Pattern, $STR_REGEXPARRAYMATCH) ; Test pattern on void input
   Switch @error
     Case 0
@@ -498,8 +499,7 @@ EndFunc   ;==>iRegExLast
 ; Author ........: Bert Kerkhof
 
 Func sRegEx(Const $sInput, $Pattern, $iStart = 1)
-  $Pattern = LimitCap($Pattern) ; Ignore capture fields, ensure full match
-  Local $mArray = mRegEx($sInput, $Pattern, $iStart)
+  Local $mArray = mRegEx($sInput, LimitCap($Pattern), $iStart)
   Local $sOut = $mArray[1]
   SetExtended($mArray[$mArray[0] - 1])
   Return $sOut
@@ -575,7 +575,7 @@ Func amRegExCapture(Const $sInput, $Pattern, $iStart = 1)
       $amResult[$I] = $mArray
     Next
     If $iStart = $iOffset Then ExitLoop
-    $iStrek = Ubound($amResult)
+    $iStrek = UBound($amResult)
     _NewDim($amResult, $iStrek)
   WEnd
   $amResult[0] = $I - 1
@@ -599,9 +599,7 @@ EndFunc   ;==>amRegExCapture
 ; Author ........: Bert Kerkhof
 
 Func aRegExLocate(Const $sInput, $Pattern, Const $iStart = 1, Const $Lfirst = True)
-  CheckPattern($Pattern)
-  $Pattern = LimitCap($Pattern) ; Improves processing speed. No cons.
-  Local $amSource = amRegExCapture($sInput, $Pattern, $iStart)
+  Local $amSource = amRegExCapture($sInput, LimitCap($Pattern), $iStart)
   Local $aResult = aNew($amSource[0])
   Local Enum $mFOUND = 3, $mOFFSET
   If $Lfirst Then
@@ -701,7 +699,6 @@ Func sRegExReplace(Const $sInput, $Pattern, Const $sScript, Const $iStart = 1)
   Next
 
   ; Capture headers, fragments and one footer:
-  If $aaToken[0] = 0 Then $Pattern = LimitCap($Pattern)
   Local $amSource = amRegExCapture($sInput, $Pattern, $iStart)
   If $amSource[0] = 0 Then Return SetError(0, 0, $sInput)
   Local $mArray, $sBpart, $sTarget, $sOut = ""
